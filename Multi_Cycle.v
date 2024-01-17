@@ -1,10 +1,10 @@
- 
+/* 
 
-Last update 1212024, 340PM
+Last update: 12/1/2024, 3:40PM
 
-
+*/
   
- parameters for instructions opcodes
+// parameters for instructions opcodes
 parameter AND = 6'b000000;
 parameter ADD = 6'b000001;
 parameter SUB = 6'b000010;
@@ -24,45 +24,45 @@ parameter PUSH = 6'b001111;
 parameter POP = 6'b010000;
 
 
-
-	Module
+/*
+	Module:
 		ALU
 		
-	Inputs
-		alu_op operation to execute in ALU
-		data1 first operand input
-		data2 second data operand
+	Inputs:
+		alu_op: operation to execute in ALU
+		data1: first operand input
+		data2: second data operand
 	
-	Outputs
-		alu_res result operation on data1 and data2
-		C, N, V, Z flags after the operation
+	Outputs:
+		alu_res: result operation on data1 and data2
+		C, N, V, Z: flags after the operation
 		
 	
-	Last Modified
-		1012024 1040PM
-
+	Last Modified:
+		10/1/2024 10:40PM
+*/
 
 module ALU(
-	input [10] alu_op,
-	input [310] data1,
-	input [310] data2,
-	output reg [310] alu_res,
-	output reg C, N, V, Z  carry, negative, overflow, and zero - flags
+	input [1:0] alu_op,
+	input [31:0] data1,
+	input [31:0] data2,
+	output reg [31:0] alu_res,
+	output reg C, N, V, Z // carry, negative, overflow, and zero - flags
 	);
 
 	
-	always @() begin 
+	always @(*) begin 
 		case (alu_op)
-			2'b00 {C, alu_res} = data1 + data2;
-			2'b01 {C, alu_res} = data1 - data2;
-			2'b10 {C, alu_res} = data1 & data2;
+			2'b00: {C, alu_res} = data1 + data2;
+			2'b01: {C, alu_res} = data1 - data2;
+			2'b10: {C, alu_res} = data1 & data2;
 		endcase
 	end
 	
 	
-	assign Z = ~(alu_res);  Zero flag
-	assign V = (alu_res[31] ^ C);  Overflow flag
-	assign N = alu_res[31];  Negative flag
+	assign Z = ~(|alu_res); // Zero flag
+	assign V = (alu_res[31] ^ C); // Overflow flag
+	assign N = alu_res[31]; // Negative flag
 
 	
 	
@@ -70,14 +70,14 @@ endmodule
 
 
 module alu_tb;
-   Signals
-  reg [10] alu_op;
-  reg [310] a, b;
-  reg [20] op;
-  wire [310] out;
+  // Signals
+  reg [1:0] alu_op;
+  reg [31:0] a, b;
+  reg [2:0] op;
+  wire [31:0] out;
   wire C, N, V, Z;
 
-   Instantiate ALU module
+  // Instantiate ALU module
   ALU uut (
     .alu_op(alu_op),
     .data1(a),
@@ -89,62 +89,62 @@ module alu_tb;
     .Z(Z)
   );
   initial begin
-    a = 32'h0000000A;  10 in hexadecimal
-    b = 32'h00000005;  5 in hexadecimal
-    alu_op = 2'b00;  Addition
+    a = 32'h0000000A; // 10 in hexadecimal
+    b = 32'h00000005; // 5 in hexadecimal
+    alu_op = 2'b00; // Addition
     #10;
-    $display(a = %h, b = %h, operation = %h, out = %h, C = %b, N = %b, V = %b, Z = %b, a, b, alu_op, out, C, N, V, Z);
+    $display("a = %h, b = %h, operation = %h, out = %h, C = %b, N = %b, V = %b, Z = %b", a, b, alu_op, out, C, N, V, Z);
 
-    alu_op = 2'b01;  Subtraction
+    alu_op = 2'b01; // Subtraction
     #10;
-    $display(a = %h, b = %h, operation = %h, out = %h, C = %b, N = %b, V = %b, Z = %b, a, b, alu_op, out, C, N, V, Z);
+    $display("a = %h, b = %h, operation = %h, out = %h, C = %b, N = %b, V = %b, Z = %b", a, b, alu_op, out, C, N, V, Z);
 
     a = 32'h00001112;
     b = 32'h00000004;
-    alu_op = 2'b10;  AND
+    alu_op = 2'b10; // AND
     #10;
-    $display(a = %h, b = %h, operation = %h, out = %h, C = %b, N = %b, V = %b, Z = %b, a, b, alu_op, out, C, N, V, Z);
+    $display("a = %h, b = %h, operation = %h, out = %h, C = %b, N = %b, V = %b, Z = %b", a, b, alu_op, out, C, N, V, Z);
     $finish;
   end
 endmodule
 
 
 
-##############################################################################################################################
+//##############################################################################################################################
 
 
-
-	Module
+/*
+	Module:
 		instruction memory
 	
-	Inputs
-		address memory address to read instruction from that address (the address is obtained from PC register)
+	Inputs:
+		address: memory address to read instruction from that address (the address is obtained from PC register)
 	
-	Outputs
-		inst the instruction we read
+	Outputs:
+		inst: the instruction we read
 		
 
-	Last Modified
-		1112024 120 AM
-
+	Last Modified:
+		11/1/2024 1:20 AM
+*/
 
 
 
 module Inst_mem(
-	input [310] address,
-	output reg [310] inst
+	input [31:0] address,
+	output reg [31:0] inst
 	);
 	
 	parameter MEM_SIZE = 1024;
     parameter WORD_SIZE = 32;
 	
-	reg [WORD_SIZE-10] mem [0MEM_SIZE-1];
+	reg [WORD_SIZE-1:0] mem [0:MEM_SIZE-1];
 	
 	initial begin	
 		
 		
-		 initialize the memory with temporary value.
-	    for (int i = 0; i  256; i = i + 1) begin
+		// initialize the memory with temporary value.
+	    for (int i = 0; i < 256; i = i + 1) begin
 	      mem[i] = 32'hAAAAAAAA;
 	    end
 	
@@ -159,35 +159,35 @@ endmodule
 
 
 module instruction_memory_tb;
-    reg [310] addr; 
-    wire [310] data_out;
+    reg [31:0] addr; 
+    wire [31:0] data_out;
 
     Inst_mem mem(addr, data_out);
 
     initial begin		 
         addr = 0;
         #20;
-        $display(Instruction = %h, data_out);
+        $display("Instruction = %h", data_out);
         #10;	
 		addr = 1;
         #10;
-        $display(Instruction = %h, data_out);
+        $display("Instruction = %h", data_out);
         #10; 
 		addr = 2;
         #10;
-        $display(Instruction = %h, data_out);
+        $display("Instruction = %h", data_out);
         #10;
 		addr = 3;
         #10;
-        $display(Instruction = %h, data_out);
+        $display("Instruction = %h", data_out);
         #10;
 		addr = 4;
         #10;
-        $display(Instruction = %h, data_out);
+        $display("Instruction = %h", data_out);
         #10;
 		addr = 5;
         #10;
-        $display(Instruction = %h, data_out);
+        $display("Instruction = %h", data_out);
         #10;
         $finish;
     end
@@ -196,54 +196,54 @@ endmodule
 
 
 
-#############################################################################################################################	
+//#############################################################################################################################	
 
-
-	Module
+/*
+	Module:
 		Register File	
 	
-	Inputs
-		clk the clock
-		RA_address the register address to read on busA or write on it the data on busW2 for LW.POI and POP (RS1 or SP)
-		RB_address the register address to read on busB (RS2 or RD)								   
-		RW_address register address to read on that register the data on busW2
-		busW1 the input data for writing (if needed)
-		busW2 second input data for writing (if needed)
-		reg_write1 indicates whether we want to write on register RW the data on busW1
-		reg_write2 indicates whether we want to write on register RA the data on busW2
+	Inputs:
+		clk: the clock
+		RA_address: the register address to read on busA or write on it the data on busW2 for LW.POI and POP (RS1 or SP)
+		RB_address: the register address to read on busB (RS2 or RD)								   
+		RW_address: register address to read on that register the data on busW2
+		busW1: the input data for writing (if needed)
+		busW2: second input data for writing (if needed)
+		reg_write1: indicates whether we want to write on register RW the data on busW1
+		reg_write2: indicates whether we want to write on register RA the data on busW2
 		
-	Outputs
-		busA the data read from RA register
-		busB the data read from RB register
+	Outputs:
+		busA: the data read from RA register
+		busB: the data read from RB register
 	
-	Last modified
-		1112024 200AM
+	Last modified:
+		11/1/2024 2:00AM
 	
-		
+*/		
 
   
 
 module register_file( 
 	input clk, 
-	input [30] RA_address,
-	input [30] RB_address,
-	input [30] RW_address,
-	input [310] busW1,
-	input [310] busW2,
-	output reg [310] busA, 
-	output reg [310] busB,
+	input [3:0] RA_address,
+	input [3:0] RB_address,
+	input [3:0] RW_address,
+	input [31:0] busW1,
+	input [31:0] busW2,
+	output reg [31:0] busA, 
+	output reg [31:0] busB,
 	input reg_write1,
 	input reg_write2
 	);
 	
-	reg [310] regs [150];	
+	reg [31:0] regs [15:0];	
 	
-	 in the last code that connects the modules, there we write the code that decides what are RA_address and RB_address. 
+	// in the last code that connects the modules, there we write the code that decides what are RA_address and RB_address. 
 	
 	always @(posedge clk) begin 
 		
 		if (reg_write1) begin
-			regs[RW_address] = busW1;
+			regs[RW_address] <= busW1;
 		end
 		
 		if (reg_write2) begin
@@ -251,8 +251,8 @@ module register_file(
 		end					 
 		 
 			
-	   busA = regs[RA_address];	 
-	   busB = regs[RB_address];
+	   busA <= regs[RA_address];	 
+	   busB <= regs[RB_address];
 	end
 	    initial begin
         regs[0] = 32'h00000000;
@@ -270,26 +270,26 @@ module register_file(
 
 endmodule	   
  
-`timescale 1ns  1ps  
+`timescale 1ns / 1ps  
 
 
 module register_file_tb;
 
-     Inputs
+    // Inputs
     reg clk;
-    reg [30] RA_address;
-    reg [30] RB_address;
-    reg [30] RW_address;
-    reg [310] busW1;
-    reg [310] busW2;
+    reg [3:0] RA_address;
+    reg [3:0] RB_address;
+    reg [3:0] RW_address;
+    reg [31:0] busW1;
+    reg [31:0] busW2;
     reg reg_write1;
     reg reg_write2;
 
-     Outputs
-    wire [310] busA;
-    wire [310] busB;
+    // Outputs
+    wire [31:0] busA;
+    wire [31:0] busB;
 
-     Instantiate the Unit Under Test (UUT)
+    // Instantiate the Unit Under Test (UUT)
     register_file uut (
         .clk(clk), 
         .RA_address(RA_address), 
@@ -303,12 +303,12 @@ module register_file_tb;
         .reg_write2(reg_write2)
     );
 
-     Clock generation
+    // Clock generation
     always #10 clk = ~clk;
 
-     Test procedure
+    // Test procedure
     initial begin
-         Initialize Inputs
+        // Initialize Inputs
         clk = 0;
         RA_address = 0;
         RB_address = 0;
@@ -318,11 +318,11 @@ module register_file_tb;
         reg_write1 = 0;
         reg_write2 = 0;
 
-         Wait 100 ns for global reset to finish
+        // Wait 100 ns for global reset to finish
         #50;
 
-         Add stimulus here
-         Example Writing to a register and reading from it
+        // Add stimulus here
+        // Example: Writing to a register and reading from it
         reg_write1 = 1;
         RW_address = 4;
         busW1 = 32'hA5A5A5A5;
@@ -331,7 +331,7 @@ module register_file_tb;
         RA_address = 4;
         #20;
 
-         Example Testing simultaneous write and read
+        // Example: Testing simultaneous write and read
         reg_write2 = 1;
         RW_address = 5;
         RA_address = 5;
@@ -339,35 +339,35 @@ module register_file_tb;
         #20;
         reg_write2 = 1;
 		reg_write1 = 1;	
-		RA_address=4;  Reg[RA-address] -- busW2
-		RW_address = 4;Reg[RW_address	] --- busW1 [This done on the first]
-	     the last value ob Reg[4] should be the value of the BusW2
+		RA_address=4; // Reg[RA-address] <-- busW2
+		RW_address = 4;//Reg[RW_address	] <--- busW1 [This done on the first]
+	    // the last value ob Reg[4] should be the value of the BusW2
 		busW1=31'haaaabbbb	;	
 		busW2=31'h66667777	 ;
 		 #20  ;
         #20;				
-         Add more test cases as needed
+        // Add more test cases as needed
 
         $finish;
     end
       
 endmodule
 
-######################################################################################################################################
+//######################################################################################################################################
 
  
 
 module Data_mem (	
 	input clk,
-	input [310] address, 
-	input [310] data_in, 
-	output reg [310] data_out,
-	input mem_read,  signal for reading from memory
-	input mem_write  signal for writing on memory
+	input [31:0] address, 
+	input [31:0] data_in, 
+	output reg [31:0] data_out,
+	input mem_read, // signal for reading from memory
+	input mem_write // signal for writing on memory
 	);			  
 	
 	
-	reg [310] mem[01023];
+	reg [31:0] mem[0:1023];
 	
 	
 	always @(posedge clk ) begin
@@ -382,9 +382,9 @@ module Data_mem (
 			
 	initial begin
 		
-		 initialize the memory with temporary value.
-	    for (int i = 0; i  256; i = i + 1) begin
-	      mem[i] = 32'hAAAAAAAA;
+		// initialize the memory with temporary value.
+	    for (int i = 0; i < 256; i = i + 1) begin
+	      mem[i] <= 32'hAAAAAAAA;
 	    end
 	
 	end
@@ -392,21 +392,21 @@ module Data_mem (
 
 endmodule	   
 
-`timescale 1ns  1ps
+`timescale 1ns / 1ps
 
 module Data_mem_tb;
 
-     Inputs
+    // Inputs
     reg clk;
-    reg [310] address;
-    reg [310] data_in;
+    reg [31:0] address;
+    reg [31:0] data_in;
     reg mem_read;
     reg mem_write;
 
-     Outputs
-    wire [310] data_out;
+    // Outputs
+    wire [31:0] data_out;
 
-     Instantiate the Unit Under Test (UUT)
+    // Instantiate the Unit Under Test (UUT)
     Data_mem uut (
         .clk(clk),
         .address(address),
@@ -416,22 +416,22 @@ module Data_mem_tb;
         .mem_write(mem_write)
     );
 
-     Clock generation
+    // Clock generation
     always #10 clk = ~clk;
 
-     Test procedure
+    // Test procedure
     initial begin
-         Initialize Inputs
+        // Initialize Inputs
         clk = 0;
         address = 0;
         data_in = 0;
         mem_read = 0;
         mem_write = 0;
 
-         Wait for global reset
+        // Wait for global reset
         #50
 
-         Test Case 1 Write to Memory
+        // Test Case 1: Write to Memory
         address = 10;
         data_in = 32'h12345678;
         mem_write = 1;
@@ -443,7 +443,7 @@ module Data_mem_tb;
        
         #20;
 
-         Test Case 2 Read from Memory
+        // Test Case 2: Read from Memory
         mem_read = 1;
         #20;
         #20;
@@ -454,60 +454,60 @@ module Data_mem_tb;
 endmodule
 
 
-#######################################################################################################################	 
+//#######################################################################################################################	 
 
 
+/*
 
 
+	// will complete documentation later, bored for now.
 
-	 will complete documentation later, bored for now.
-
-	Last Modified
-		1212024 100AM
-
+	Last Modified:
+		12/1/2024 1:00AM
+*/
 
 module control_unit(   
-	input Z, V, C, N,  flags, needed for Branch conditions (for PC source signal)
-	input [50] opcode,
+	input Z, V, C, N, // flags, needed for Branch conditions (for PC source signal)
+	input [5:0] opcode,
 	output reg sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, write_back_data, reg_write1, reg_write2, extend_op, mem_Din,
-	output reg [10] address_mem, pc_src, alu_op
+	output reg [1:0] address_mem, pc_src, alu_op
 	);
 	
 	reg branch_taken;
-	assign  branch_taken = (opcode == BEQ && Z)  (opcode == BNE && !Z)  (opcode == BLT && N != V)  (opcode == BGT && !Z && N == V);	
-	assign sel_RA = (opcode == CALL  opcode == RET  opcode == PUSH  opcode == POP);
-	assign sel_RB = ~(opcode == AND  opcode == ADD  opcode == SUB);
-	assign sel_alu_operand = (opcode == ANDI  opcode == ADDI  opcode == LW  opcode == LW_POI  opcode == SW);
-	assign address_mem = ( (opcode == RET  opcode == POP)  2  ( opcode == CALL  opcode == PUSH)  1  0 );
-	assign read_mem = (opcode == LW  opcode == LW_POI  opcode == POP  opcode == RET);
-	assign write_mem = (opcode == SW  opcode == CALL  opcode == PUSH);
-	assign write_back_data = (opcode == LW  opcode == LW_POI  opcode == POP);
-	assign reg_write1 = (opcode == ADD  opcode == AND  opcode == SUB  opcode == ANDI  opcode == ADDI  opcode == LW  opcode == LW_POI  opcode == POP); 
-	assign reg_write2 = (opcode == LW_POI  opcode == POP);
+	assign  branch_taken = (opcode == BEQ && Z) || (opcode == BNE && !Z) || (opcode == BLT && N != V) || (opcode == BGT && !Z && N == V);	
+	assign sel_RA = (opcode == CALL || opcode == RET || opcode == PUSH || opcode == POP);
+	assign sel_RB = ~(opcode == AND || opcode == ADD || opcode == SUB);
+	assign sel_alu_operand = (opcode == ANDI || opcode == ADDI || opcode == LW || opcode == LW_POI || opcode == SW);
+	assign address_mem = ( (opcode == RET || opcode == POP) ? 2 : ( opcode == CALL || opcode == PUSH) ? 1 : 0 );
+	assign read_mem = (opcode == LW || opcode == LW_POI || opcode == POP || opcode == RET);
+	assign write_mem = (opcode == SW || opcode == CALL || opcode == PUSH);
+	assign write_back_data = (opcode == LW || opcode == LW_POI || opcode == POP);
+	assign reg_write1 = (opcode == ADD || opcode == AND || opcode == SUB || opcode == ANDI || opcode == ADDI || opcode == LW || opcode == LW_POI || opcode == POP); 
+	assign reg_write2 = (opcode == LW_POI || opcode == POP);
 	assign extend_op = (opcode != ANDI);
 	assign mem_Din = (opcode == CALL);
-	assign pc_src = (opcode == JMP  opcode == CALL)  1  
-                (opcode == RET)  3  
-                (branch_taken)  2  0;
+	assign pc_src = (opcode == JMP || opcode == CALL) ? 1 : 
+                (opcode == RET) ? 3 : 
+                (branch_taken) ? 2 : 0;
 
-	assign alu_op = ((opcode == AND)  2  (opcode == SUB  opcode == BEQ  opcode == BLT  opcode == BGT  opcode == BNE)  1  0);
+	assign alu_op = ((opcode == AND) ? 2 : (opcode == SUB || opcode == BEQ || opcode == BLT || opcode == BGT || opcode == BNE) ? 1 : 0);
 
 
 endmodule
 
-`timescale 1ns  1ps
+`timescale 1ns / 1ps
 
 module control_unit_tb;
 
-     Inputs
+    // Inputs
     reg Z, V, C, N;
-    reg [50] opcode;
+    reg [5:0] opcode;
 
-     Outputs
+    // Outputs
     wire sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, write_back_data, reg_write1, reg_write2, extend_op, mem_Din;
-    wire [10] address_mem, pc_src, alu_op;
+    wire [1:0] address_mem, pc_src, alu_op;
 
-     Instantiate the Unit Under Test (UUT)
+    // Instantiate the Unit Under Test (UUT)
     control_unit control ( 
 	
         .Z(Z), 
@@ -531,23 +531,23 @@ module control_unit_tb;
     );
 
     initial begin
-         Initialize Inputs
+        // Initialize Inputs
         Z = 1;
         V = 1;
         C = 0;
         N = 0;
 	   #10;
-        opcode = 6'b010000;  Replace with actual opcode
-        #10;  Wait for 10ns
+        opcode = 6'b010000; // Replace with actual opcode
+        #10; // Wait for 10ns
 
-         Display outputs
-       $display(Time = %d  opcode = %b, sel_RA = %b, sel_RB = %b, sel_alu_operand=%b, , 
+        // Display outputs
+       $display("Time = %d : opcode = %b, sel_RA = %b, sel_RB = %b, sel_alu_operand=%b, ", 
 	   $time, opcode, sel_RA, sel_RB, sel_alu_operand);		 
-	   $display(---------------------------------------------------------------------------);
-       $display(read_mem = %b, write_mem = %b, write_back_data = %b, reg_write1 = %b, , 
+	   $display("---------------------------------------------------------------------------");
+       $display("read_mem = %b, write_mem = %b, write_back_data = %b, reg_write1 = %b, ", 
 	   read_mem, write_mem, write_back_data, reg_write1);	
-	   $display(---------------------------------------------------------------------------);
-       $display(reg_write2 = %b, extend_op = %b, mem_Din = %b, pc_src = %d, address_mem = %d, 
+	   $display("---------------------------------------------------------------------------");
+       $display("reg_write2 = %b, extend_op = %b, mem_Din = %b, pc_src = %d, address_mem = %d", 
          reg_write2, extend_op, mem_Din, pc_src, address_mem);
 
         #100;
@@ -559,66 +559,66 @@ endmodule
 
 
 
-	 ############################################################
+	// ############################################################/
 module extender(
-	input [150] A,
-	output reg [310] B,
+	input [15:0] A,
+	output reg [31:0] B,
 	input extend_op
 	);
 	
 	
-	always @() begin 
+	always @(*) begin 
 	   
 		if (extend_op == 0)
-			B = {16'b0, A[150]};  unsigned immediate (extend with zeros)
+			B <= {16'b0, A[15:0]}; // unsigned immediate (extend with zeros)
 		else 
-			B = {{16{A[15]}}, A[150]};  signed extend (extend with MSB in A)
+			B <= {{16{A[15]}}, A[15:0]}; // signed extend (extend with MSB in A)
 			
 	end
 	
 	
 
 endmodule	   
-`timescale 1ns  1ps
+`timescale 1ns / 1ps
 
 module extender_tb;
 
-     Inputs
-    reg [150] A;
+    // Inputs
+    reg [15:0] A;
     reg extend_op;
 
-     Outputs
-    wire [310] B;
+    // Outputs
+    wire [31:0] B;
 
-     Instantiate the Unit Under Test (UUT)
+    // Instantiate the Unit Under Test (UUT)
     extender uut (
         .A(A), 
         .B(B), 
         .extend_op(extend_op)
     );
 
-     Test procedure
+    // Test procedure
     initial begin
-         Initialize Inputs
+        // Initialize Inputs
         A = 0;
         extend_op = 0;
 
-         Wait 100 ns for global reset to finish
+        // Wait 100 ns for global reset to finish
         #10;
 
-         Add stimulus here
-         Test Case 1 Zero Extension
+        // Add stimulus here
+        // Test Case 1: Zero Extension
         A = 16'h1234;
-        extend_op = 0;  Zero extension
+        extend_op = 0; // Zero extension
         #20;
 
         
-         Test Case 3 Sign Extension with negative value
-        A = 16'hF234;  MSB is 1, indicating a negative value
-        extend_op = 1;  Sign extension
+        // Test Case 3: Sign Extension with negative value
+        A = 16'hF234; // MSB is 1, indicating a negative value
+        extend_op = 1; // Sign extension
         #20;
 
-         Add more test cases as needed
+        // Add more test cases as needed
 
         $finish;
     end
@@ -628,4 +628,4 @@ endmodule
 
 
 
-############################################################################################################################`
+//############################################################################################################################
