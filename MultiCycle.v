@@ -2,7 +2,7 @@
 
 Last update: 12/1/2024, 3:40PM
 
-	shereen
+
 
 */
 
@@ -466,7 +466,7 @@ endmodule
 	// will complete documentation later, bored for now.
 
 	Last Modified:
-		12/1/2024 1:00AM
+		23/1/2024 2:14AM
 */
 
 module control_unit(   
@@ -475,9 +475,9 @@ module control_unit(
 	output reg sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, write_back_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2,
 	output reg [1:0] address_mem, pc_src, alu_op
 	);
-	
+											// conditions for LT and GT are swapped here, since it's RD (>/</==) RS1 (we do RS1 - RD,..)   
 	reg branch_taken;
-	assign  branch_taken = (opcode == BEQ && Z) || (opcode == BNE && !Z) || (opcode == BLT && N != V) || (opcode == BGT && !Z && N == V);	
+	assign  branch_taken = (opcode == BEQ && Z) || (opcode == BNE && !Z) || (opcode == BLT && !Z && N == V) || (opcode == BGT && N != V);	
 	assign sel_RA = (opcode == CALL || opcode == RET || opcode == PUSH || opcode == POP);
 	assign sel_RB = ~(opcode == AND || opcode == ADD || opcode == SUB);
 	assign sel_alu_operand = (opcode == ANDI || opcode == ADDI || opcode == LW || opcode == LW_POI || opcode == SW);
