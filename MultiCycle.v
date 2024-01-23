@@ -1,7 +1,7 @@
 	 /* 
 
-Last update: 12/1/2024, 3:40PM
-
+Last update: 24/1/2024, 3:40PM
+	Connected modules
 
 
 */
@@ -25,7 +25,14 @@ parameter RET = 6'b001110;
 parameter PUSH = 6'b001111;
 parameter POP = 6'b010000;
 
+parameter IF = 3'b000;
+parameter ID = 3'b001;
+parameter EX = 3'b010;
+parameter MEM = 3'b011;
+parameter WB = 3'b100;
 
+
+parameter sp_index = 4'b1111; // stack pointer index in register file (R15)
 
 /*
 	Module:
@@ -50,7 +57,8 @@ module ALU(
 	input [31:0] data1,
 	input [31:0] data2,
 	output reg [31:0] alu_res,
-	output reg C, N, V, Z // carry, negative, overflow, and zero - flags
+	output reg C, 
+    output wire N, V, Z // negative, overflow, and zero - flags
 	);
 
 	
@@ -62,11 +70,9 @@ module ALU(
 		endcase
 	end
 	
-	
 	assign Z = ~(|alu_res); // Zero flag
 	assign V = (alu_res[31] ^ C); // Overflow flag
 	assign N = alu_res[31]; // Negative flag
-
 	
 	
 endmodule	
@@ -359,6 +365,7 @@ endmodule
 
 //######################################################################################################################################
 
+parameter data_mem_size = 1024;
 
 module Data_mem (	
 	input clk,
@@ -370,8 +377,7 @@ module Data_mem (
 	);			  
 	
 	
-	reg [31:0] mem[0:1023];
-	
+	reg [31:0] mem[0:data_mem_size - 1];
 	
 	always @(posedge clk ) begin
 		
@@ -472,8 +478,8 @@ endmodule
 module control_unit(   
 	input Z, V, C, N, // flags, needed for Branch conditions (for PC source signal)
 	input [5:0] opcode,
-	output reg sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, write_back_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2,
-	output reg [1:0] address_mem, pc_src, alu_op
+	output reg sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2,
+	output reg [1:0] sel_address_mem, pc_src, alu_op
 	);
 											// conditions for LT and GT are swapped here, since it's RD (>/</==) RS1 (we do RS1 - RD,..)   
 	reg branch_taken;
@@ -481,10 +487,10 @@ module control_unit(
 	assign sel_RA = (opcode == CALL || opcode == RET || opcode == PUSH || opcode == POP);
 	assign sel_RB = ~(opcode == AND || opcode == ADD || opcode == SUB);
 	assign sel_alu_operand = (opcode == ANDI || opcode == ADDI || opcode == LW || opcode == LW_POI || opcode == SW);
-	assign address_mem = ( (opcode == RET || opcode == POP) ? 2 : ( opcode == CALL || opcode == PUSH) ? 1 : 0 );
+	assign sel_address_mem = ( (opcode == RET || opcode == POP) ? 2 : ( opcode == CALL || opcode == PUSH) ? 1 : 0 );
 	assign read_mem = (opcode == LW || opcode == LW_POI || opcode == POP || opcode == RET);
 	assign write_mem = (opcode == SW || opcode == CALL || opcode == PUSH);
-	assign write_back_data = (opcode == LW || opcode == LW_POI || opcode == POP);
+	assign sel_wb_data = (opcode == LW || opcode == LW_POI || opcode == POP);
 	assign reg_write1 = (opcode == ADD || opcode == AND || opcode == SUB || opcode == ANDI || opcode == ADDI || opcode == LW || opcode == LW_POI || opcode == POP); 
 	assign reg_write2 = (opcode == LW_POI || opcode == POP);
 	assign extend_op = (opcode != ANDI);
@@ -494,8 +500,8 @@ module control_unit(
                 (branch_taken) ? 2 : 0;
 
 	assign alu_op = ((opcode == AND) ? 2 : (opcode == SUB || opcode == BEQ || opcode == BLT || opcode == BGT || opcode == BNE) ? 1 : 0);	
-	assign sel_BusW2 = (opcode == PUSH || opcode == CALL) ? 1 :
-                  (opcode == LW_POI || opcode == POP || opcode == RET) ? 0 : 0;
+	assign sel_BusW2 = (opcode == PUSH || opcode == CALL) ? 1 : 0;
+                //  (opcode == LW_POI || opcode == POP || opcode == RET) ? 0 : 0;
 
 	
 
@@ -511,8 +517,8 @@ module control_unit_tb;
     reg [5:0] opcode;
 
     // Outputs
-    wire sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, write_back_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2;
-    wire [1:0] address_mem, pc_src, alu_op;
+    wire sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2;
+    wire [1:0] sel_address_mem, pc_src, alu_op;
 
     // Instantiate the Unit Under Test (UUT)
     control_unit control ( 
@@ -527,12 +533,12 @@ module control_unit_tb;
         .sel_alu_operand(sel_alu_operand), 
         .read_mem(read_mem), 
         .write_mem(write_mem), 
-        .write_back_data(write_back_data), 
+        .sel_wb_data(sel_wb_data), 
         .reg_write1(reg_write1), 
         .reg_write2(reg_write2), 
         .extend_op(extend_op), 
         .mem_Din(mem_Din),
-        .address_mem(address_mem), 
+        .sel_address_mem(sel_address_mem),
         .pc_src(pc_src), 
         .alu_op(alu_op),		 
 		.sel_BusW2(sel_BusW2)
@@ -552,11 +558,11 @@ module control_unit_tb;
        $display("Time = %d : opcode = %b, sel_RA = %b, sel_RB = %b, sel_alu_operand=%b, ", 
 	   $time, opcode, sel_RA, sel_RB, sel_alu_operand);		 
 	   $display("---------------------------------------------------------------------------");
-       $display("read_mem = %b, write_mem = %b, write_back_data = %b, reg_write1 = %b, ", 
-	   read_mem, write_mem, write_back_data, reg_write1);	
+       $display("read_mem = %b, write_mem = %b, sel_wb_data = %b, reg_write1 = %b, ", 
+	   read_mem, write_mem, sel_wb_data, reg_write1);	
 	   $display("---------------------------------------------------------------------------");
-       $display("reg_write2 = %b, extend_op = %b, mem_Din = %b, pc_src = %d, address_mem = %d, sel_BusW2 =%b", 
-         reg_write2, extend_op, mem_Din, pc_src, address_mem, sel_BusW2);
+       $display("reg_write2 = %b, extend_op = %b, mem_Din = %b, pc_src = %d, sel_ = %d, sel_BusW2 =%b", 
+         reg_write2, extend_op, mem_Din, pc_src, sel_address_mem, sel_BusW2);
 
         #100;
         $finish;
@@ -637,3 +643,173 @@ endmodule
 
 
 //############################################################################################################################
+
+
+module CPU (
+    input clk,
+    input reset
+);
+
+// reg for inputs
+//reg RA, RB, busW1, busW2, 
+
+reg [3:0] RA, RB, RW;
+reg [31:0] busW1, busW2;
+reg [31:0] pc;
+reg [2:0] next_state, current_state;
+
+reg [31:0] ir;
+wire [31:0] busA, busB;
+wire N, V, Z; // negative, overflow, and zero - flags (assigned in ALU module using assign statements)
+reg C; // carry flag (defined in ALU module inside an always block, so we need to declare it as a reg here)
+
+
+reg [31:0] RD, RS1, RS2;
+reg [16:0] immediate;
+reg [1:0] mode; // for LW.POI and SW instructions
+reg [5:0] opcode;
+reg [31:0] alu_operand1, alu_operand2, alu_res;
+reg [31:0] jump_target; // for J-type instructions (JMP, CALL)
+// link the modules here
+reg [15:0] A; // for extender module
+
+wire [31:0] B; // extended immediate (for I-type instructions (ANDI, ADDI, LW, LW.POI))
+reg [31:0] BTA; // branch target address (for B-type instructions (BGT, BLT, BEQ, BNE)) 
+wire [1:0] alu_op;
+
+wire sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2;
+wire [1:0] sel_address_mem, pc_src;
+reg [31:0] address, data_in, data_out;
+
+
+Inst_mem inst_mem1(pc, ir);
+register_file register_file1(clk, RA, RB, RW, busW1, busW2, busA, busB, reg_write1, reg_write2);
+ALU alu1(alu_op, alu_operand1, alu_operand2, alu_res, C, N, V, Z);
+control_unit control_unit1(Z, V, C, N, opcode, sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2, sel_address_mem, pc_src, alu_op);
+Data_mem data_mem1(clk, address, data_in, data_out, read_mem, write_mem);
+extender extender1(A, B, extend_op);
+
+
+always @(posedge clk or negedge reset) begin
+    if (reset == 0) begin
+        next_state <= IF;
+        pc <= 0; // initialize program counter to zero
+        alu_operand1 <= 0; 
+        alu_operand2 <= 0; 
+        busW1 <= 0;
+        busW2 <= 0;
+        address <= 0;
+        data_in <= 0;
+   
+    end
+    else begin
+    
+        current_state <= next_state;
+
+        case (current_state)
+
+            IF: begin
+                case (pc_src)
+                    0: pc <= pc + 1; 
+                    1: pc <= jump_target;
+                    2: pc <= BTA;
+                    3: pc <= data_out; // for RET instruction (return to the address on the top of the stack)   
+                endcase
+
+            end
+
+            ID: begin 
+                opcode <= ir[31:26];
+                RD <= ir[25:22]; 
+                RS1 <= ir[21:18];
+                RS2 <= ir[17:14];
+                immediate <= ir [18: 2]; // for I-type instructions (ANDI, ADDI, LW, LW.POI)
+                mode <= ir[1:0]; // for LW.POI and SW instructions
+                jump_target <= {pc[31:26], ir[25:0]}; // for J-type instructions (JMP, CALL)
+                BTA <= pc + B;
+
+                if (sel_RA == 0)
+                    RA <= RS1;
+                else if (sel_RA == 1)
+                    RA <= sp_index;
+                
+                if (sel_RB == 0)
+                    RB <= RS2;
+                else if (sel_RB == 1)
+                    RB <= RD;
+            end 
+
+            EX: begin
+
+                alu_operand1 <= busA;
+
+                if (sel_alu_operand == 0)
+                    alu_operand2 <= busB;
+                else if (sel_alu_operand == 1)
+                    alu_operand2 <= B;
+                
+            end
+            MEM: begin
+
+                if (sel_address_mem == 0)
+                    address <= alu_res;
+                else if (sel_address_mem == 1)
+                    address <= busA - 1; // for PUSH, CALL (first decrement SP, then write on it)
+                else if (sel_address_mem == 2)
+                    address <= busA; // for POP, RET (first read from SP, then increment it by in write back stage)
+
+                if (sel_BusW2 == 0)
+                    busW2 <= busA + 1;
+                else if (sel_BusW2 == 1)
+                    busW2 <= busA - 1; 
+
+            end 
+            WB: begin
+
+                if (sel_wb_data == 0)
+                    busW1 <= alu_res;
+                else if (sel_wb_data == 1)
+                    busW1 <= data_out;
+            end
+
+        endcase 
+    end
+
+
+    case (current_state)
+        IF: begin
+            next_state <= ID;
+        end
+        ID: begin
+            
+            if (opcode == JMP)
+                next_state <= IF;
+            else
+                next_state <= EX;
+
+        end
+        EX: begin
+            
+            if (opcode >= BGT && opcode <= BNE)
+                next_state <= IF;
+            else if (opcode >= AND && opcode <= ADDI)
+                next_state <= WB;
+            else if ((opcode >= LW && opcode <= SW) || (opcode >= CALL && opcode <= POP))
+                next_state <= MEM;
+        end
+        MEM: begin
+            if (opcode == SW)
+                next_state <= IF;
+            
+            
+            else if (opcode == LW || opcode == LW_POI || opcode == POP || opcode == RET || opcode == CALL || 
+            opcode == PUSH)
+                next_state <= WB;
+        end
+        WB: begin
+            next_state <= IF; // always go back to IF stage after WB stage
+        end
+    endcase
+end	   
+
+endmodule
