@@ -1,8 +1,8 @@
 	 /* 
 
-Last update: 12/1/2024, 3:40PM
+Last update: 24/1/2024, 3:40PM
+	Connected modules
 
-	shereen
 
 */
 
@@ -25,7 +25,15 @@ parameter RET = 6'b001110;
 parameter PUSH = 6'b001111;
 parameter POP = 6'b010000;
 
+parameter IF = 3'b000;
+parameter ID = 3'b001;
+parameter EX = 3'b010;
+parameter MEM = 3'b011;
+parameter WB = 3'b100;
 
+
+
+parameter sp_index = 4'b1111; // stack pointer index in register file (R15)
 
 /*
 	Module:
@@ -50,7 +58,8 @@ module ALU(
 	input [31:0] data1,
 	input [31:0] data2,
 	output reg [31:0] alu_res,
-	output reg C, N, V, Z // carry, negative, overflow, and zero - flags
+	output reg C, 
+    output wire N, V, Z // negative, overflow, and zero - flags
 	);
 
 	
@@ -62,11 +71,9 @@ module ALU(
 		endcase
 	end
 	
-	
 	assign Z = ~(|alu_res); // Zero flag
 	assign V = (alu_res[31] ^ C); // Overflow flag
 	assign N = alu_res[31]; // Negative flag
-
 	
 	
 endmodule	
@@ -146,16 +153,19 @@ module Inst_mem(
 	
 	initial begin	
 				
-	  mem[0] = 32'h090C8000;   //sub $4,$3,$2	  (R-Type)
-	  mem[1] = 32'h0D44001B; //	 andi $5,$1,6	   (I-Type)
-	  mem[2] = 32'h158C0010; //LW $6,$3,4		   (I-Type with mode = 00)
-	  mem[3] = 32'h15C00061;  //LW.POI $7,$1,8	 (mode = 01)
-	  mem[4] = 32'h1E540043; //SW $9,$5,16  (unused mode bits 11)
-	  mem[5] = 32'h33FFFFFD; // JMP -3 (constant represented in 2' complement)
-	  mem[6] = 32'h34000004; // CALL 4	  
-	  mem[7] = 32'h38000000; // RET	
-	  mem[8]=  32'h3D800000; //PUSH $6
-	  mem[9] = 32'h40800000; // POP $2
+	  mem[0] = 32'h19C40021;      //sub $4,$3,$2	  (R-Type) 
+	  
+	  
+	  // mem[0] = 32'h090C8000;   //sub $4,$3,$2	  (R-Type)
+	 // mem[1] = 32'h0D44001B; //	 andi $5,$1,6	   (I-Type)
+	 // mem[2] = 32'h158C0010; //LW $6,$3,4		   (I-Type with mode = 00)
+	 // mem[3] = 32'h19C40021;  //LW.POI $7,$1,8	 (mode = 01)
+	 // mem[4] = 32'h1E540043; //SW $9,$5,16  (unused mode bits 11)
+	 // mem[5] = 32'h33FFFFFD; // JMP -3 (constant represented in 2' complement)
+	 // mem[6] = 32'h34000004; // CALL 4	  
+	 // mem[7] = 32'h38000000; // RET	
+	 // mem[8]=  32'h3D800000; //PUSH $6
+	//  mem[9] = 32'h40800000; // POP $2
 	end
 	
 	
@@ -243,33 +253,33 @@ module register_file(
 	reg [31:0] regs [15:0];	
 	
 	// in the last code that connects the modules, there we write the code that decides what are RA_address and RB_address. 
-	
+	   
 	always @(posedge clk) begin 
 		
 		if (reg_write1) begin
 			regs[RW_address] <= busW1;
 		end
 		
-		if (reg_write2) begin
+		if (reg_write2 ) begin
 			regs[RA_address] = busW2;
 		end					 
 		 
-			
-	   busA <= regs[RA_address];	 
-	   busB <= regs[RB_address];
+		busA <= regs[RA_address];	 
+	   busB <= regs[RB_address];	
+	  
 	end
 	    initial begin
-        regs[0] = 32'h00000000;
-        regs[1] = 32'h00000001;
-        regs[2] = 32'h00000002;
-        regs[3] = 32'h00000003;
-        regs[4] = 32'h00000004;
-        regs[5] = 32'h00000005;
-        regs[6] = 32'h00000006;
-        regs[7] = 32'h00000007;
-        regs[8] = 32'h00000008;
-        regs[9] = 32'h00000009;
-        regs[10] = 32'h0000000A;
+        regs[0] <= 32'h00000000;
+        regs[1] <= 32'h00000001;
+        regs[2] <= 32'h00000002;
+        regs[3] <= 32'h00000003;
+        regs[4] <= 32'h00000004;
+        regs[5] <= 32'h00000005;
+        regs[6] <= 32'h00000006;
+        regs[7] <= 32'h00000007;
+        regs[8] <= 32'h00000008;
+        regs[9] <= 32'h00000009;
+        regs[10] <= 32'h0000000A;
     end
 
 endmodule	   
@@ -359,6 +369,7 @@ endmodule
 
 //######################################################################################################################################
 
+parameter data_mem_size = 1024;
 
 module Data_mem (	
 	input clk,
@@ -370,8 +381,7 @@ module Data_mem (
 	);			  
 	
 	
-	reg [31:0] mem[0:1023];
-	
+	reg [31:0] mem[0:data_mem_size - 1];
 	
 	always @(posedge clk ) begin
 		
@@ -466,36 +476,36 @@ endmodule
 	// will complete documentation later, bored for now.
 
 	Last Modified:
-		12/1/2024 1:00AM
+		23/1/2024 2:14AM
 */
 
 module control_unit(   
 	input Z, V, C, N, // flags, needed for Branch conditions (for PC source signal)
 	input [5:0] opcode,
-	output reg sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, write_back_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2,
-	output reg [1:0] address_mem, pc_src, alu_op
+	output reg sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2,
+	output reg [1:0] sel_address_mem, pc_src, alu_op
 	);
-	
+											// conditions for LT and GT are swapped here, since it's RD (>/</==) RS1 (we do RS1 - RD,..)   
 	reg branch_taken;
-	assign  branch_taken = (opcode == BEQ && Z) || (opcode == BNE && !Z) || (opcode == BLT && N != V) || (opcode == BGT && !Z && N == V);	
+	assign  branch_taken = (opcode == BEQ && Z) || (opcode == BNE && !Z) || (opcode == BLT && !Z && N == V) || (opcode == BGT && N != V);	
 	assign sel_RA = (opcode == CALL || opcode == RET || opcode == PUSH || opcode == POP);
 	assign sel_RB = ~(opcode == AND || opcode == ADD || opcode == SUB);
 	assign sel_alu_operand = (opcode == ANDI || opcode == ADDI || opcode == LW || opcode == LW_POI || opcode == SW);
-	assign address_mem = ( (opcode == RET || opcode == POP) ? 2 : ( opcode == CALL || opcode == PUSH) ? 1 : 0 );
+	assign sel_address_mem = ( (opcode == RET || opcode == POP) ? 2 : ( opcode == CALL || opcode == PUSH) ? 1 : 0 );
 	assign read_mem = (opcode == LW || opcode == LW_POI || opcode == POP || opcode == RET);
 	assign write_mem = (opcode == SW || opcode == CALL || opcode == PUSH);
-	assign write_back_data = (opcode == LW || opcode == LW_POI || opcode == POP);
+	assign sel_wb_data = (opcode == LW || opcode == LW_POI || opcode == POP);
 	assign reg_write1 = (opcode == ADD || opcode == AND || opcode == SUB || opcode == ANDI || opcode == ADDI || opcode == LW || opcode == LW_POI || opcode == POP); 
-	assign reg_write2 = (opcode == LW_POI || opcode == POP);
+	assign reg_write2 = (opcode == LW_POI || opcode == POP) 
 	assign extend_op = (opcode != ANDI);
 	assign mem_Din = (opcode == CALL);
 	assign pc_src = (opcode == JMP || opcode == CALL) ? 1 : 
                 (opcode == RET) ? 3 : 
                 (branch_taken) ? 2 : 0;
 
-	assign alu_op = ((opcode == AND) ? 2 : (opcode == SUB || opcode == BEQ || opcode == BLT || opcode == BGT || opcode == BNE) ? 1 : 0);	
-	assign sel_BusW2 = (opcode == PUSH || opcode == CALL) ? 1 :
-                  (opcode == LW_POI || opcode == POP || opcode == RET) ? 0 : 0;
+	assign alu_op = ((opcode == AND || opcode == ANDI ) ? 2 : (opcode == SUB || opcode == BEQ || opcode == BLT || opcode == BGT || opcode == BNE) ? 1 : 0);	
+	assign sel_BusW2 = (opcode == PUSH || opcode == CALL) ? 1 : 0;
+                //  (opcode == LW_POI || opcode == POP || opcode == RET) ? 0 : 0;
 
 	
 
@@ -511,8 +521,8 @@ module control_unit_tb;
     reg [5:0] opcode;
 
     // Outputs
-    wire sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, write_back_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2;
-    wire [1:0] address_mem, pc_src, alu_op;
+    wire sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2;
+    wire [1:0] sel_address_mem, pc_src, alu_op;
 
     // Instantiate the Unit Under Test (UUT)
     control_unit control ( 
@@ -527,12 +537,12 @@ module control_unit_tb;
         .sel_alu_operand(sel_alu_operand), 
         .read_mem(read_mem), 
         .write_mem(write_mem), 
-        .write_back_data(write_back_data), 
+        .sel_wb_data(sel_wb_data), 
         .reg_write1(reg_write1), 
         .reg_write2(reg_write2), 
         .extend_op(extend_op), 
         .mem_Din(mem_Din),
-        .address_mem(address_mem), 
+        .sel_address_mem(sel_address_mem),
         .pc_src(pc_src), 
         .alu_op(alu_op),		 
 		.sel_BusW2(sel_BusW2)
@@ -552,11 +562,11 @@ module control_unit_tb;
        $display("Time = %d : opcode = %b, sel_RA = %b, sel_RB = %b, sel_alu_operand=%b, ", 
 	   $time, opcode, sel_RA, sel_RB, sel_alu_operand);		 
 	   $display("---------------------------------------------------------------------------");
-       $display("read_mem = %b, write_mem = %b, write_back_data = %b, reg_write1 = %b, ", 
-	   read_mem, write_mem, write_back_data, reg_write1);	
+       $display("read_mem = %b, write_mem = %b, sel_wb_data = %b, reg_write1 = %b, ", 
+	   read_mem, write_mem, sel_wb_data, reg_write1);	
 	   $display("---------------------------------------------------------------------------");
-       $display("reg_write2 = %b, extend_op = %b, mem_Din = %b, pc_src = %d, address_mem = %d, sel_BusW2 =%b", 
-         reg_write2, extend_op, mem_Din, pc_src, address_mem, sel_BusW2);
+       $display("reg_write2 = %b, extend_op = %b, mem_Din = %b, pc_src = %d, sel_ = %d, sel_BusW2 =%b", 
+         reg_write2, extend_op, mem_Din, pc_src, sel_address_mem, sel_BusW2);
 
         #100;
         $finish;
@@ -637,3 +647,331 @@ endmodule
 
 
 //############################################################################################################################
+
+
+module CPU (
+    input clk,
+    input reset, 
+	output reg[31:0] pc_out,
+	output reg [31:0] ir_out,
+	output reg 	sel_RA_out, sel_RB_out, sel_alu_operand_out, read_mem_out, write_mem_out, reg_write1_out,reg_write2_out,sel_wb_data_out ,mem_Din_out, sel_BusW2_out,
+	output reg [1:0] alu_op_out,sel_address_mem_out	,
+    output reg [31:0] busA_out, // first operand output
+    output reg [31:0] busB_out, // second operand output
+	output reg [3:0] RA_out,
+	output reg [3:0] RB_out,
+	output reg [31:0] data1,data2,result_alu_out, busW1_out , busW2_out ,data_out_out
+); 
+	
+
+// reg for inputs
+//reg RA, RB, busW1, busW2, 
+
+reg [3:0] RA, RB, RW;
+reg [31:0] busW1, busW2;
+reg [31:0] pc;
+	
+	
+reg [2:0] next_state, current_state;
+
+wire [31:0] ir;
+wire [31:0] busA, busB;	  
+wire N, V, Z; // negative, overflow, and zero - flags (assigned in ALU module using assign statements)
+reg C; // carry flag (defined in ALU module inside an always block, so we need to declare it as a reg here)
+
+
+reg [31:0] RD, RS1, RS2;
+reg [1:0] mode; // for LW.POI and SW instructions
+reg [5:0] opcode;
+reg [31:0] alu_operand1, alu_operand2, alu_res;
+reg [31:0] jump_target; // for J-type instructions (JMP, CALL)
+// link the modules here
+reg [15:0] A; // for extender module
+
+wire [31:0] B; // extended immediate (for I-type instructions (ANDI, ADDI, LW, LW.POI))
+reg [31:0] BTA; // branch target address (for B-type instructions (BGT, BLT, BEQ, BNE)) 
+wire [1:0] alu_op;
+
+wire sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2;	// signals
+wire [1:0] sel_address_mem, pc_src;
+reg [31:0] address, data_in;
+wire [31:0] data_out;
+
+
+Inst_mem inst_mem1(pc, ir);
+register_file register_file1(clk, RA, RB, RW, busW1, busW2, busA, busB, reg_write1, reg_write2);
+ALU alu1(alu_op, alu_operand1, alu_operand2, alu_res, C, N, V, Z);
+control_unit control_unit1(Z, V, C, N, opcode, sel_RA, sel_RB, sel_alu_operand, read_mem, write_mem, sel_wb_data, reg_write1, reg_write2, extend_op, mem_Din, sel_BusW2, sel_address_mem, pc_src, alu_op);
+Data_mem data_mem1(clk, address, data_in, data_out, read_mem, write_mem);
+extender extender1(A, B, extend_op);
+
+
+always @(posedge clk or negedge reset) begin
+    if (reset == 0) begin
+        next_state <= IF; 
+        pc <= 0; // initialize program counter to zero	
+        alu_operand1 <= 0; 
+        alu_operand2 <= 0; 
+        busW1 <= 0;
+        busW2 <= 2;
+        address <= 0;
+        data_in <= 0;
+   
+    end
+    else begin 	
+		
+    
+        current_state <= next_state;
+
+        case (current_state)
+
+            IF: begin  	 
+				pc_out = pc;
+                case (pc_src)
+                    0: pc <= pc + 1; 
+                    1: pc <= jump_target;
+                    2: pc <= BTA;
+                    3: pc <= data_out; // for RET instruction (return to the address on the top of the stack)   
+                endcase
+
+            end
+
+            ID: begin
+				ir_out <= ir; 
+				pc_out = pc;
+                opcode <= ir[31:26];
+				 
+                RD <= ir[25:22]; 
+                RS1 <= ir[21:18];
+                RS2 <= ir[17:14];
+				
+                 A <= ir [18: 2]; // for I-type instructions (ANDI, ADDI, LW, LW.POI)
+                mode <= ir[1:0]; // for LW.POI and SW instructions
+                jump_target <= {pc[31:26], ir[25:0]}; // for J-type instructions (JMP, CALL)
+                BTA <= pc + B; 
+				#10
+				sel_RA_out <= sel_RA;	  
+	            sel_RB_out <= sel_RB;  
+				alu_op_out <= alu_op;
+				sel_alu_operand_out <= sel_alu_operand;	   
+				read_mem_out<= read_mem;
+				write_mem_out<=write_mem;
+				sel_wb_data_out <= 	 sel_wb_data;
+				mem_Din_out	<=	mem_Din;
+				sel_BusW2_out <=  sel_BusW2	 ;
+				//sel_wb_data_out=sel_wb_data;
+				reg_write1_out<= reg_write1 ;
+				reg_write2_out<= reg_write2;	  
+                if (sel_RA == 0)
+                    RA <= RS1;
+                else if (sel_RA == 1)
+                    RA <= sp_index;
+                
+                if (sel_RB == 0)
+                    RB <= RS2;
+                else if (sel_RB == 1)
+                    RB <= RD; 
+				#30
+			   RA_out <= RA;
+			   RB_out <= RB;
+			busA_out <=    busA;
+            busB_out <=  busB;
+			
+            end 
+
+            EX: begin
+                alu_operand1 <= busA; 
+				data1 <= alu_operand1;
+
+                if (sel_alu_operand == 0)
+                    alu_operand2 <= busB;
+                else if (sel_alu_operand == 1)
+                    alu_operand2 <= B;
+				#10
+			    
+				data2 <= alu_operand2; 
+				result_alu_out <= alu_res;
+                
+            end
+            MEM: begin
+
+                if (sel_address_mem == 0)
+                    address <= alu_res;
+                else if (sel_address_mem == 1)
+                    address <= busA - 1; // for PUSH, CALL (first decrement SP, then write on it)
+                else if (sel_address_mem == 2)
+                    address <= busA; // for POP, RET (first read from SP, then increment it by in write back stage)
+
+                if (sel_BusW2 == 0)
+                    busW2 <= busA + 1;
+                else if (sel_BusW2 == 1)
+                    busW2 <= busA - 1; 
+				#10
+				data_out_out <=  data_out;
+            end 
+            WB: begin 
+				//	#10
+                if (sel_wb_data == 0)
+                    busW1 <= alu_res;
+                else if (sel_wb_data == 1)
+                    busW1 <= data_out;
+				//#10	
+			busW1_out <= busW1;
+			busW2_out <= busW2;
+            end
+
+        endcase 
+    end
+
+
+    case (current_state)
+        IF: begin
+            next_state <= ID;
+        end
+        ID: begin
+            
+            if (opcode == JMP)
+                next_state <= IF;
+            else
+                next_state <= EX;
+
+        end
+        EX: begin
+            
+            if (opcode >= BGT && opcode <= BNE)
+                next_state <= IF;
+            else if (opcode >= AND && opcode <= ADDI)
+                next_state <= WB; 
+			else if(opcode == LW_POI)
+				next_state <= MEM;
+            else if ((opcode >= LW && opcode <= SW) || (opcode >= CALL && opcode <= POP))
+                next_state <= MEM;
+        end
+        MEM: begin
+            if (opcode == SW)
+                next_state <= IF;
+            
+            
+            else if (opcode == LW || opcode == LW_POI || opcode == POP || opcode == RET || opcode == CALL || 
+            opcode == PUSH)
+                next_state <= WB;
+        end
+        WB: begin
+            next_state <= IF; // always go back to IF stage after WB stage
+        end
+    endcase
+end	   
+
+endmodule 	
+
+module CPU_tb;
+
+  // Inputs
+  reg clk;
+  reg reset;
+
+  // Outputs
+  wire [31:0] ir_out;  
+  wire [31:0] pc_out;
+  wire [31:0] busA_out; // First operand output
+  wire [31:0] busB_out; // Second operand output
+  wire sel_RA_out, sel_RB_out, sel_alu_operand_out, read_mem_out, write_mem_out, reg_write1_out, reg_write2_out, sel_wb_data_out, mem_Din_out, sel_BusW2_out;
+  wire [1:0] alu_op_out, sel_address_mem_out;
+  wire [3:0] ra_out;
+  wire [3:0] rb_out;
+  wire [31:0] data1, data2, result, busW1_out, busW2_out ,data_out_out;
+
+  // Instantiate the CPU module
+  CPU uut (
+    .clk(clk),
+    .reset(reset),
+    .ir_out(ir_out),
+    .pc_out(pc_out),
+    .sel_RA_out(sel_RA_out),
+    .sel_RB_out(sel_RB_out),
+    .sel_alu_operand_out(sel_alu_operand_out),
+    .read_mem_out(read_mem_out),
+    .write_mem_out(write_mem_out),
+    .reg_write1_out(reg_write1_out),
+    .reg_write2_out(reg_write2_out),
+    .sel_wb_data_out(sel_wb_data_out),
+    .mem_Din_out(mem_Din_out),
+    .sel_BusW2_out(sel_BusW2_out),
+    .alu_op_out(alu_op_out),
+    .busA_out(busA_out),
+    .busB_out(busB_out),
+    .RA_out(ra_out),
+    .RB_out(rb_out),
+    .data1(data1),
+    .data2(data2),
+    .result_alu_out(result),
+    .busW1_out(busW1_out),
+    .busW2_out(busW2_out) ,
+	.data_out_out(data_out_out),
+	.sel_address_mem_out(sel_address_mem_out)
+  );
+
+  // Clock generation
+  always #5 clk = ~clk;
+
+  // Initial block
+  initial begin
+    // Initialize inputs
+    clk = 1;
+    reset = 0; // Keep reset high initially
+    
+    // Apply reset
+    #30 reset = 1;
+
+    // Add test cases here
+    // You can apply inputs and check the outputs based on your requirements
+
+    // Observe initial state
+    #40;
+    $display("After Reset - IF: ir_out = %h  pc = %h", ir_out, pc_out);
+
+    // Simulate a few clock cycles
+    #10;
+    clk = 0;
+    #10;
+    clk = 1;
+
+    // Observe the state after a few clock cycles
+    #110;
+
+
+$display("___________________________________________________________________________");
+
+$display("After Clock Cycles - IF: ");
+$display("ir_out = %h", ir_out);
+$display("pc = %h", pc_out);
+$display("busA_out = %h", busA_out);
+$display("busB_out = %h", busB_out);
+$display("sel_RA_out = %b", sel_RA_out);
+$display("sel_RB_out = %b", sel_RB_out);
+$display("sel_alu_operand_out = %b", sel_alu_operand_out);
+$display("read_mem_out = %b", read_mem_out);
+$display("write_mem_out = %b", write_mem_out);
+$display("reg_write1_out = %b", reg_write1_out);
+$display("reg_write2_out = %b", reg_write2_out);
+$display("sel_wb_data_out = %b", sel_wb_data_out);
+$display("mem_Din_out = %h", mem_Din_out);
+$display("sel_BusW2_out = %b", sel_BusW2_out);
+$display("alu_op_out = %b", alu_op_out);
+$display("RA_out = %b", ra_out);
+$display("RB_out = %h", rb_out);
+$display("data1 = %h", data1);
+$display("data2 = %h", data2);
+$display("result_alu_out = %h", result);
+$display("busW1_out = %h", busW1_out);
+$display("busW2_out = %h", busW2_out);
+$display("data_out_out = %h", data_out_out);
+
+    // Add more test cases as needed
+
+    #100 $finish; // Finish simulation after some time
+  end
+
+endmodule
+
+
