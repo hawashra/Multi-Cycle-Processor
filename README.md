@@ -1,6 +1,6 @@
 # 🖥️ Multi-Cycle Processor (Custom ISA in Verilog)
 
-A Verilog implementation of a **multi-cycle CPU** designed as part of the *Computer Architecture II* course at Birzeit University.  
+A Verilog implementation of a **multi-cycle CPU** designed as part of the *Computer Architecture* course at Birzeit University.  
 This project was developed collaboratively with **[Saja Shareef](#)** and **[Shereen Ibdah](#)**.
 
 ---
